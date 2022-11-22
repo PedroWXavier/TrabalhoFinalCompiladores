@@ -10,6 +10,7 @@
 %token WHILE,TRUE, FALSE, IF, ELSE
 %token EQ, LEQ, GEQ, NEQ 
 %token AND, OR
+%token BREAK
 
 %right '='
 %left OR
@@ -51,6 +52,11 @@ lcmd : lcmd cmd
 	   ;
 	   
 cmd : aexp
+	  | BREAK ';' { if(canBreak == 0) 
+                        yyerror("(sem) o comando (break) deve ser usado dentro de um loop");
+
+					System.out.printf("\tJMP rot_%02d\t # break ...\n", (int)pRotBreak.peek());
+                  }        
 	  |	'{' lcmd '}' { System.out.println("\t\t# terminou o bloco..."); }				       
       | WRITE '(' LIT ')' ';' { strTab.add($3);
                                 System.out.println("\tMOVL $_str_"+strCount+"Len, %EDX"); 
@@ -85,7 +91,8 @@ cmd : aexp
 								}
          
     | WHILE {
-					pRot.push(proxRot);  proxRot += 2;
+					pRot.push(proxRot);  pRotBreak.push(proxRot+1); proxRot += 2;
+					canBreak += 1;
 					System.out.printf("rot_%02d:\n",pRot.peek());
 				  } 
 			 '(' exp ')' {
@@ -97,6 +104,8 @@ cmd : aexp
 				  		System.out.printf("\tJMP rot_%02d   # terminou cmd na linha de cima\n", pRot.peek());
 							System.out.printf("rot_%02d:\n",(int)pRot.peek()+1);
 							pRot.pop();
+							pRotBreak.pop();
+							canBreak -= 1;
 							}  
 							
 			| IF '(' exp {	
@@ -182,11 +191,13 @@ exp :  NUM  { System.out.println("\tPUSHL $"+$1); }
   private Yylex lexer;
 
   private TabSimb ts = new TabSimb();
+  private int canBreak = 0; // should increase 1 each time enters in a loop
 
   private int strCount = 0;
   private ArrayList<String> strTab = new ArrayList<String>();
 
   private Stack<Integer> pRot = new Stack<Integer>();
+  private Stack<Integer> pRotBreak = new Stack<Integer>();
   private int proxRot = 1;
 
 
